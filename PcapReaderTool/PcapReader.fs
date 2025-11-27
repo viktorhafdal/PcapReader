@@ -45,7 +45,7 @@ let generateReplacement (original: string) =
         let parts = Array.init 6 (fun _ -> random.Next(0, 255).ToString("X2"))
         String.Join(":", parts)
     else
-        "000.000.000.000"
+        original
 
 let anonymizationMap =
     distinctAddresses
