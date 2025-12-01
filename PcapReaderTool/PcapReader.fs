@@ -17,30 +17,40 @@ let outputPath = @"../TestExamplePcapCsv_Anonymized.csv"
 
 let originalLines = File.ReadAllLines filePath
 
-let getIpColumns (line: string) =
+let getAddressColumns (line: string) =
     let parts = line.Split(',')
 
     if parts.Length > 3 then
-        [| parts.[2]; parts.[3] |] // source & destination
+        [| parts.[2]; parts.[3] |]
     else
         [||]
 
-let distinctIps =
+let distinctAddresses =
     originalLines
     |> Array.skip 1 // cause first line is header
-    |> Array.collect getIpColumns
+    |> Array.collect getAddressColumns
     |> Array.distinct
 
-printfn $"Found {distinctIps.Length} distinct IP addresses."
+printfn $"Found {distinctAddresses.Length} distinct addresses."
 
-let random = Random(42)
+let random = Random 42
 
-let generateRandomIp () =
-    $"{random.Next(1, 255)}.{random.Next(1, 255)}.{random.Next(1, 255)}.{random.Next(1, 255)}."
+let generateReplacement (original: string) =
+    if original.Contains(".") then //ipv4
+        $"{random.Next(1, 255)}.{random.Next(1, 255)}.{random.Next(1, 255)}.{random.Next(1, 255)}"
+    elif original.Contains("::") || original.Split(':').Length > 6 then //ipv6
+        let parts = Array.init 8 (fun _ -> random.Next(0, 65535).ToString("x4"))
+        String.Join(":", parts)
+    elif original.Split(':').Length = 6 then //MAC addresses
+        let parts = Array.init 6 (fun _ -> random.Next(0, 255).ToString("X2"))
+        String.Join(":", parts)
+    else
+        original
 
-let newIps = Array.init distinctIps.Length (fun _ -> generateRandomIp ())
-
-let anonymizationMap = (distinctIps, newIps) ||> Array.zip |> dict
+let anonymizationMap =
+    distinctAddresses
+    |> Array.map (fun original -> original, generateReplacement original)
+    |> dict
 
 let processLine (line: string) =
     let parts = line.Split(',')
